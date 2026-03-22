@@ -5,17 +5,31 @@ import { supabase } from '../../lib/supabase';
 import PageWrapper from '../layout/PageWrapper';
 import Input from '../ui/Input';
 import { PrimaryButton } from '../ui/Button';
+import { validateEmail, validatePassword } from '../../lib/validation';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
 
   async function handleLogin(e) {
     e.preventDefault();
     setError('');
+
+    // Validate inputs
+    const emailVal = validateEmail(email);
+    const passVal = validatePassword(password);
+
+    const errors = { email: '', password: '' };
+    if (!emailVal.valid) errors.email = emailVal.message;
+    if (!passVal.valid) errors.password = passVal.message;
+
+    setFieldErrors(errors);
+    if (errors.email || errors.password) return;
+
     setLoading(true);
 
     try {
@@ -65,9 +79,10 @@ export default function AdminLogin() {
             label="Email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { setEmail(e.target.value); setFieldErrors((p) => ({ ...p, email: '' })); }}
             placeholder="coordinator@email.com"
             autoComplete="email"
+            error={fieldErrors.email}
           />
 
           <Input
@@ -75,9 +90,10 @@ export default function AdminLogin() {
             label="Password"
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => { setPassword(e.target.value); setFieldErrors((p) => ({ ...p, password: '' })); }}
             placeholder="••••••••"
             autoComplete="current-password"
+            error={fieldErrors.password}
           />
 
           {error && (

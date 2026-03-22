@@ -96,20 +96,32 @@ export default function AdminMain() {
         </button>
       </div>
 
-      {/* Stats summary */}
+      {/* Stats summary — clickable */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="bg-white rounded-sm border border-wedding-border p-4 text-center">
+        <button
+          onClick={() => navigate('/admin/guests?filter=all')}
+          className="bg-white rounded-sm border border-wedding-border p-4 text-center
+                     hover:border-stone-400 active:scale-[0.97] transition-all"
+        >
           <p className="text-2xl font-serif text-wedding-black">{guests.length}</p>
           <p className="text-[9px] tracking-[0.15em] uppercase text-stone-400 mt-1">Total</p>
-        </div>
-        <div className="bg-white rounded-sm border border-green-200 p-4 text-center">
+        </button>
+        <button
+          onClick={() => navigate('/admin/guests?filter=checked-in')}
+          className="bg-white rounded-sm border border-green-200 p-4 text-center
+                     hover:border-green-400 active:scale-[0.97] transition-all"
+        >
           <p className="text-2xl font-serif text-green-600">{checkedInGuests.length}</p>
           <p className="text-[9px] tracking-[0.15em] uppercase text-stone-400 mt-1">Checked In</p>
-        </div>
-        <div className="bg-white rounded-sm border border-wedding-border p-4 text-center">
+        </button>
+        <button
+          onClick={() => navigate('/admin/guests?filter=unchecked')}
+          className="bg-white rounded-sm border border-wedding-border p-4 text-center
+                     hover:border-stone-400 active:scale-[0.97] transition-all"
+        >
           <p className="text-2xl font-serif text-stone-500">{uncheckedGuests.length}</p>
           <p className="text-[9px] tracking-[0.15em] uppercase text-stone-400 mt-1">Waiting</p>
-        </div>
+        </button>
       </div>
 
       {/* Menu grid */}

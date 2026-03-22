@@ -9,6 +9,7 @@ import PageWrapper from '../layout/PageWrapper';
 import Input from '../ui/Input';
 import { PrimaryButton, SecondaryButton } from '../ui/Button';
 import { useAgenda } from '../../hooks/useAgenda';
+import { validateTime, validateTimeOptional, validateRequired } from '../../lib/validation';
 
 export default function EditTimeline() {
   const navigate = useNavigate();
@@ -21,6 +22,8 @@ export default function EditTimeline() {
   const [editForm, setEditForm] = useState({ start_time: '', end_time: '', event_name: '' });
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItem, setNewItem] = useState({ start_time: '', end_time: '', event_name: '' });
+  const [addErrors, setAddErrors] = useState({});
+  const [editErrors, setEditErrors] = useState({});
 
   useEffect(() => {
     checkAuth();
@@ -72,6 +75,19 @@ export default function EditTimeline() {
   async function saveEdit() {
     if (!editingId) return;
 
+    // Validate
+    const nameVal = validateRequired(editForm.event_name, 'Event name');
+    const startVal = validateTime(editForm.start_time);
+    const endVal = validateTimeOptional(editForm.end_time);
+
+    const errors = {};
+    if (!nameVal.valid) errors.event_name = nameVal.message;
+    if (!startVal.valid) errors.start_time = startVal.message;
+    if (!endVal.valid) errors.end_time = endVal.message;
+
+    setEditErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     // Calculate the correct sort_order based on the new start_time
     const newMinutes = timeToMinutes(editForm.start_time);
     const otherItems = agenda.filter((a) => a.id !== editingId);
@@ -89,14 +105,26 @@ export default function EditTimeline() {
 
     if (success) {
       setEditingId(null);
-      // Re-number all sort_orders to keep them clean
+      setEditErrors({});
       await renumberSortOrders();
     }
   }
 
   async function handleAdd(e) {
     e.preventDefault();
-    if (!newItem.event_name.trim() || !newItem.start_time.trim()) return;
+
+    // Validate all fields
+    const nameVal = validateRequired(newItem.event_name, 'Event name');
+    const startVal = validateTime(newItem.start_time);
+    const endVal = validateTimeOptional(newItem.end_time);
+
+    const errors = {};
+    if (!nameVal.valid) errors.event_name = nameVal.message;
+    if (!startVal.valid) errors.start_time = startVal.message;
+    if (!endVal.valid) errors.end_time = endVal.message;
+
+    setAddErrors(errors);
+    if (Object.keys(errors).length > 0) return;
 
     // Calculate sort_order based on where this time fits chronologically
     const newMinutes = timeToMinutes(newItem.start_time);
@@ -115,8 +143,8 @@ export default function EditTimeline() {
 
     if (success) {
       setNewItem({ start_time: '', end_time: '', event_name: '' });
+      setAddErrors({});
       setShowAddForm(false);
-      // Re-number all sort_orders so there are no gaps or collisions
       await renumberSortOrders();
     }
   }
@@ -212,6 +240,7 @@ export default function EditTimeline() {
             value={newItem.event_name}
             onChange={(e) => setNewItem((p) => ({ ...p, event_name: e.target.value }))}
             placeholder="Ceremony Begins"
+            error={addErrors.event_name}
           />
           <div className="grid grid-cols-2 gap-3">
             <Input
@@ -220,6 +249,7 @@ export default function EditTimeline() {
               value={newItem.start_time}
               onChange={(e) => setNewItem((p) => ({ ...p, start_time: e.target.value }))}
               placeholder="14:30"
+              error={addErrors.start_time}
             />
             <Input
               id="newEndTime"
@@ -227,6 +257,7 @@ export default function EditTimeline() {
               value={newItem.end_time}
               onChange={(e) => setNewItem((p) => ({ ...p, end_time: e.target.value }))}
               placeholder="15:00"
+              error={addErrors.end_time}
             />
           </div>
           <PrimaryButton type="submit">
@@ -252,6 +283,7 @@ export default function EditTimeline() {
                   label="Event"
                   value={editForm.event_name}
                   onChange={(e) => setEditForm((p) => ({ ...p, event_name: e.target.value }))}
+                  error={editErrors.event_name}
                 />
                 <div className="grid grid-cols-2 gap-3">
                   <Input
@@ -259,12 +291,14 @@ export default function EditTimeline() {
                     label="Start"
                     value={editForm.start_time}
                     onChange={(e) => setEditForm((p) => ({ ...p, start_time: e.target.value }))}
+                    error={editErrors.start_time}
                   />
                   <Input
                     id={`edit-end-${item.id}`}
                     label="End"
                     value={editForm.end_time}
                     onChange={(e) => setEditForm((p) => ({ ...p, end_time: e.target.value }))}
+                    error={editErrors.end_time}
                   />
                 </div>
                 <div className="flex gap-2">
