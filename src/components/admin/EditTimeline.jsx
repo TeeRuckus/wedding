@@ -33,6 +33,33 @@ export default function EditTimeline() {
     }
   }
 
+  /**
+   * Converts a time string ("14:30" or "2:30 PM") to minutes since midnight
+   * for sorting purposes. Returns 9999 if unparseable.
+   */
+  function timeToMinutes(timeStr) {
+    if (!timeStr) return 9999;
+    const cleaned = timeStr.trim();
+
+    // 24-hour: "14:30"
+    const match24 = cleaned.match(/^(\d{1,2}):(\d{2})$/);
+    if (match24) {
+      return parseInt(match24[1], 10) * 60 + parseInt(match24[2], 10);
+    }
+
+    // 12-hour: "2:30 PM"
+    const match12 = cleaned.toUpperCase().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/);
+    if (match12) {
+      let h = parseInt(match12[1], 10);
+      const m = parseInt(match12[2], 10);
+      if (match12[3] === 'PM' && h !== 12) h += 12;
+      if (match12[3] === 'AM' && h === 12) h = 0;
+      return h * 60 + m;
+    }
+
+    return 9999;
+  }
+
   function startEditing(item) {
     setEditingId(item.id);
     setEditForm({
@@ -44,25 +71,80 @@ export default function EditTimeline() {
 
   async function saveEdit() {
     if (!editingId) return;
-    const success = await updateAgendaItem(editingId, editForm);
-    if (success) setEditingId(null);
+
+    // Calculate the correct sort_order based on the new start_time
+    const newMinutes = timeToMinutes(editForm.start_time);
+    const otherItems = agenda.filter((a) => a.id !== editingId);
+    let sortOrder = 0;
+    for (const item of otherItems) {
+      if (timeToMinutes(item.start_time) < newMinutes) {
+        sortOrder = (item.sort_order || 0) + 1;
+      }
+    }
+
+    const success = await updateAgendaItem(editingId, {
+      ...editForm,
+      sort_order: sortOrder,
+    });
+
+    if (success) {
+      setEditingId(null);
+      // Re-number all sort_orders to keep them clean
+      await renumberSortOrders();
+    }
   }
 
   async function handleAdd(e) {
     e.preventDefault();
     if (!newItem.event_name.trim() || !newItem.start_time.trim()) return;
 
-    const maxOrder = agenda.reduce((max, item) => Math.max(max, item.sort_order || 0), 0);
+    // Calculate sort_order based on where this time fits chronologically
+    const newMinutes = timeToMinutes(newItem.start_time);
+    let sortOrder = 0;
+    for (const item of agenda) {
+      if (timeToMinutes(item.start_time) <= newMinutes) {
+        sortOrder = (item.sort_order || 0) + 1;
+      }
+    }
+
     const success = await addAgendaItem({
       ...newItem,
-      sort_order: maxOrder + 1,
+      sort_order: sortOrder,
       passed: false,
     });
 
     if (success) {
       setNewItem({ start_time: '', end_time: '', event_name: '' });
       setShowAddForm(false);
+      // Re-number all sort_orders so there are no gaps or collisions
+      await renumberSortOrders();
     }
+  }
+
+  /**
+   * Re-numbers all agenda items' sort_order sequentially (0, 1, 2, ...)
+   * based on their start_time. Ensures no gaps or duplicates.
+   */
+  async function renumberSortOrders() {
+    // Fetch latest
+    const { data, error } = await supabase
+      .from('agenda')
+      .select('id, start_time, sort_order')
+      .order('sort_order', { ascending: true });
+
+    if (error || !data) return;
+
+    // Sort by start_time
+    const sorted = [...data].sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time));
+
+    // Update each item with its new sequential sort_order
+    for (let i = 0; i < sorted.length; i++) {
+      if (sorted[i].sort_order !== i) {
+        await updateAgendaItem(sorted[i].id, { sort_order: i });
+      }
+    }
+
+    await fetchAgenda();
   }
 
   async function handleDelete(id) {
