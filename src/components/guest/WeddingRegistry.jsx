@@ -1,17 +1,39 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy, Heart } from 'lucide-react';
+import { ArrowLeft, Copy, Heart, Mic } from 'lucide-react';
 import PageWrapper from '../layout/PageWrapper';
 import BotanicalDecor from '../layout/BotanicalDecor';
 import Toast from '../ui/Toast';
 
-/**
- * Bank details are read from environment variables for security.
- * Set VITE_REGISTRY_BSB and VITE_REGISTRY_ACCOUNT in your .env file.
- */
 const BSB = import.meta.env.VITE_REGISTRY_BSB || '---';
 const ACCOUNT_NUMBER = import.meta.env.VITE_REGISTRY_ACCOUNT || '--------';
 const ACCOUNT_NAME = import.meta.env.VITE_REGISTRY_ACCOUNT_NAME || 'T & J Wedding';
+
+/**
+ * Reusable copyable field — tapping copies value to clipboard.
+ */
+function CopyableField({ label, value, onCopy }) {
+  return (
+    <button
+      onClick={() => onCopy(value, label)}
+      className="w-full bg-stone-50 border border-stone-200 rounded-sm p-4
+                 hover:bg-stone-100 transition-colors text-left group"
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[10px] tracking-[0.2em] uppercase text-stone-400 mb-1">
+            {label}
+          </p>
+          <p className="text-stone-700 font-mono text-lg tracking-widest">
+            {value}
+          </p>
+        </div>
+        <Copy className="w-4 h-4 text-stone-300 group-hover:text-stone-500 transition-colors" />
+      </div>
+    </button>
+  );
+}
+
 
 export default function WeddingRegistry() {
   const navigate = useNavigate();
@@ -47,55 +69,25 @@ export default function WeddingRegistry() {
 
         <Heart className="w-8 h-8 text-wedding-black mx-auto opacity-30 mb-8" />
 
-        {/* Bank details */}
+        {/* Bank details — all fields copyable */}
         <div className="space-y-4 mb-8">
-          {/* Account Name */}
-          <div className="bg-stone-50 border border-stone-200 rounded-sm p-4">
-            <p className="text-[10px] tracking-[0.2em] uppercase text-stone-400 mb-1">
-              Account Name
-            </p>
-            <p className="text-stone-700 font-medium tracking-wide text-lg">
-              {ACCOUNT_NAME}
-            </p>
-          </div>
+          <CopyableField
+            label="Account Name"
+            value={ACCOUNT_NAME}
+            onCopy={copyToClipboard}
+          />
 
-          {/* BSB */}
-          <button
-            onClick={() => copyToClipboard(BSB, 'BSB')}
-            className="w-full bg-stone-50 border border-stone-200 rounded-sm p-4
-                       hover:bg-stone-100 transition-colors text-left group"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] tracking-[0.2em] uppercase text-stone-400 mb-1">
-                  BSB
-                </p>
-                <p className="text-stone-700 font-mono text-lg tracking-widest">
-                  {BSB}
-                </p>
-              </div>
-              <Copy className="w-4 h-4 text-stone-300 group-hover:text-stone-500 transition-colors" />
-            </div>
-          </button>
+          <CopyableField
+            label="BSB"
+            value={BSB}
+            onCopy={copyToClipboard}
+          />
 
-          {/* Account Number */}
-          <button
-            onClick={() => copyToClipboard(ACCOUNT_NUMBER, 'Account number')}
-            className="w-full bg-stone-50 border border-stone-200 rounded-sm p-4
-                       hover:bg-stone-100 transition-colors text-left group"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] tracking-[0.2em] uppercase text-stone-400 mb-1">
-                  Account Number
-                </p>
-                <p className="text-stone-700 font-mono text-lg tracking-widest">
-                  {ACCOUNT_NUMBER}
-                </p>
-              </div>
-              <Copy className="w-4 h-4 text-stone-300 group-hover:text-stone-500 transition-colors" />
-            </div>
-          </button>
+          <CopyableField
+            label="Account Number"
+            value={ACCOUNT_NUMBER}
+            onCopy={copyToClipboard}
+          />
         </div>
 
         {/* Gratitude message */}
@@ -107,6 +99,30 @@ export default function WeddingRegistry() {
           </p>
           <p className="text-stone-400 text-sm mt-3 italic font-serif">
             With love, Tawana &amp; Joy
+          </p>
+        </div>
+
+        {/* Audio guest book section */}
+        <div className="border-t border-wedding-border mt-8 pt-8">
+          <div className="w-14 h-14 rounded-full bg-stone-50 border border-stone-200
+                          mx-auto mb-4 flex items-center justify-center">
+            <Mic className="w-6 h-6 text-wedding-black opacity-50" />
+          </div>
+
+          <h3 className="text-lg font-serif text-wedding-black tracking-wider mb-2">
+            AUDIO GUEST BOOK
+          </h3>
+
+          <p className="text-stone-500 text-sm leading-relaxed max-w-xs mx-auto">
+            We have an audio guest book set up at the venue — look for
+            it near the wishing well. We would absolutely love it if
+            you could leave us a message.
+          </p>
+
+          <p className="text-stone-400 text-xs mt-3 italic leading-relaxed max-w-xs mx-auto">
+            Share a piece of advice, a favourite memory, or simply
+            tell us how much fun you're having. Your words mean
+            the world to us.
           </p>
         </div>
 

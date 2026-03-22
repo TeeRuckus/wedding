@@ -92,18 +92,16 @@ export default function SharePhotos() {
 
   /* ── Upload ── */
 
-  async function uploadAll() {
-    const pending = files.filter((f) => f.status === 'pending' || f.status === 'error');
-    if (pending.length === 0) return;
+  /* ── Upload a single file (with retry) ── */
 
-    setIsUploading(true);
+  async function uploadSingleFile(entry) {
+    setFiles((prev) =>
+      prev.map((f) => (f.id === entry.id ? { ...f, status: 'uploading', error: null } : f))
+    );
 
-    for (const entry of pending) {
-      // Mark as uploading
-      setFiles((prev) =>
-        prev.map((f) => (f.id === entry.id ? { ...f, status: 'uploading', error: null } : f))
-      );
+    const MAX_RETRIES = 2;
 
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
         const timestamp = Date.now();
         const ext = entry.file.name.split('.').pop() || 'jpg';
@@ -116,24 +114,46 @@ export default function SharePhotos() {
             upsert: false,
           });
 
-        if (error) {
+        if (!error) {
+          setFiles((prev) =>
+            prev.map((f) => (f.id === entry.id ? { ...f, status: 'done' } : f))
+          );
+          return; // success — exit retry loop
+        }
+
+        // Last attempt and still errored
+        if (attempt === MAX_RETRIES) {
           setFiles((prev) =>
             prev.map((f) =>
               f.id === entry.id ? { ...f, status: 'error', error: error.message } : f
             )
           );
-        } else {
-          setFiles((prev) =>
-            prev.map((f) => (f.id === entry.id ? { ...f, status: 'done' } : f))
-          );
         }
       } catch (err) {
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === entry.id ? { ...f, status: 'error', error: 'Upload failed' } : f
-          )
-        );
+        if (attempt === MAX_RETRIES) {
+          setFiles((prev) =>
+            prev.map((f) =>
+              f.id === entry.id ? { ...f, status: 'error', error: 'Upload failed' } : f
+            )
+          );
+        }
       }
+    }
+  }
+
+  /* ── Upload all pending files in parallel batches ── */
+
+  async function uploadAll() {
+    const pending = files.filter((f) => f.status === 'pending' || f.status === 'error');
+    if (pending.length === 0) return;
+
+    setIsUploading(true);
+
+    const BATCH_SIZE = 3; // Upload 3 photos concurrently
+
+    for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+      const batch = pending.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map((entry) => uploadSingleFile(entry)));
     }
 
     setIsUploading(false);
