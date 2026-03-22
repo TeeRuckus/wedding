@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Base Reset ─── */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  background-color: #faf8f5;
+  color: #2d2d2d;
+  overscroll-behavior: none;
+}
+
+/* ─── Custom Scrollbar ─── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d4cfc8;
+  border-radius: 999px;
+}
+
+/* ─── Input Autofill Override ─── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
+  -webkit-text-fill-color: #2d2d2d;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* ─── Animation Delays ─── */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* ─── Floor Plan Styles ─── */
+.floor-plan-highlight {
+  animation: pulse-highlight 2s ease-in-out infinite;
+}
+
+@keyframes pulse-highlight {
+  0%, 100% {
+    fill: #1a1a1a;
+    opacity: 0.9;
+  }
+  50% {
+    fill: #2d2d2d;
+    opacity: 0.6;
+  }
+}
+
+/* ─── Fullscreen Map ─── */
+.fullscreen-map {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: #faf8f5;
+  overflow: auto;
+  animation: fade-in 0.3s ease-out;
+}
+
+.fullscreen-map.landscape {
+  transform: rotate(0deg);
+}
+
+/* ─── Toast notification ─── */
+.toast {
+  animation: toast-in 0.3s ease-out, toast-out 0.3s ease-in 2.7s forwards;
+}
+
+@keyframes toast-in {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes toast-out {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(100%); opacity: 0; }
+}
