@@ -432,14 +432,8 @@ function useZoomPan(containerRef, highlightTable) {
     isDragging.current = false;
   }
 
-  // Auto-focus on highlighted table on first render
-  useEffect(() => {
-    if (highlightTable != null) {
-      // Small delay so the container has mounted and measured
-      const timer = setTimeout(() => focusTable(highlightTable), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [highlightTable]);
+  // Guest starts zoomed out to see the full venue.
+  // They can tap the crosshair button to zoom to their table.
 
   const transform = `translate(${translate.x}px, ${translate.y}px) scale(${scale})`;
 
@@ -656,7 +650,7 @@ export default function FloorPlan({ highlightTable = null, highlightSeat = null 
                     bg-black/60 text-white text-[10px] tracking-wider px-3 py-1.5 rounded-full
                     pointer-events-none animate-fade-in"
          style={{ animationDelay: '500ms', opacity: 0 }}>
-      Pinch or scroll to zoom
+      Pinch to zoom · Tap ⌖ to find your table
     </div>
   );
 

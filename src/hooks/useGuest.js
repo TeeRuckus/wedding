@@ -4,7 +4,6 @@ import { normaliseForLookup } from '../lib/validation';
 
 /**
  * Hook encapsulating all guest-related database operations.
- * Handles lookup, check-in, and failed attempt tracking.
  */
 export function useGuest() {
   const [loading, setLoading] = useState(false);
@@ -13,7 +12,11 @@ export function useGuest() {
 
   /**
    * Look up a guest by first and last name.
-   * Uses case-insensitive comparison via Supabase's ilike.
+   * Uses case-insensitive comparison via ilike.
+   *
+   * NOTE: Uses .limit(1) instead of .single() because .single()
+   * returns a 406 when zero rows match, which is a normal "not found"
+   * case — not an error.
    */
   async function findGuest(firstName, lastName) {
     setLoading(true);
@@ -28,17 +31,25 @@ export function useGuest() {
         .select('*')
         .ilike('first_name', normFirst)
         .ilike('last_name', normLast)
-        .limit(1)
-        .single();
+        .limit(1);
 
-      if (dbError || !data) {
+      if (dbError) {
+        setError('Something went wrong. Please try again.');
+        console.error('Guest lookup error:', dbError);
+        setGuest(null);
+        return null;
+      }
+
+      // .limit(1) returns an array — check if it has a result
+      if (!data || data.length === 0) {
         setError('Guest not found. Please check your name and try again.');
         setGuest(null);
         return null;
       }
 
-      setGuest(data);
-      return data;
+      const found = data[0];
+      setGuest(found);
+      return found;
     } catch (err) {
       setError('Something went wrong. Please try again.');
       console.error('Guest lookup error:', err);

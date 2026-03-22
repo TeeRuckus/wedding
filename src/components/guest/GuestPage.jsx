@@ -1,15 +1,48 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import PageWrapper from '../layout/PageWrapper';
 import FloorPlan from './FloorPlan';
 import BotanicalDecor from '../layout/BotanicalDecor';
 import { PrimaryButton, SecondaryButton } from '../ui/Button';
+import { supabase } from '../../lib/supabase';
 
 export default function GuestPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const guest = location.state?.guest;
+
+  const [showTablemates, setShowTablemates] = useState(false);
+  const [tablemates, setTablemates] = useState([]);
+  const [loadingTablemates, setLoadingTablemates] = useState(false);
+
+  // Fetch tablemates from the database when the section is opened
+  useEffect(() => {
+    if (!showTablemates || !guest?.table_number) return;
+    if (tablemates.length > 0) return; // already fetched
+
+    async function fetchTablemates() {
+      setLoadingTablemates(true);
+      try {
+        const { data, error } = await supabase
+          .from('guests')
+          .select('id, salutation, first_name, last_name, seat_number')
+          .eq('table_number', guest.table_number)
+          .neq('id', guest.id)
+          .order('seat_number', { ascending: true });
+
+        if (!error && data) {
+          setTablemates(data);
+        }
+      } catch (err) {
+        console.error('Error fetching tablemates:', err);
+      } finally {
+        setLoadingTablemates(false);
+      }
+    }
+
+    fetchTablemates();
+  }, [showTablemates, guest]);
 
   if (!guest) {
     return (
@@ -23,13 +56,6 @@ export default function GuestPage() {
       </PageWrapper>
     );
   }
-
-  // Parse tablemates — stored as a JSON array in the database
-  const tablemates = Array.isArray(guest.tablemates)
-    ? guest.tablemates
-    : typeof guest.tablemates === 'string'
-      ? JSON.parse(guest.tablemates || '[]')
-      : [];
 
   return (
     <PageWrapper>
@@ -77,7 +103,7 @@ export default function GuestPage() {
         {/* Floor plan */}
         <div className="p-6 border-b border-wedding-border">
           <p className="text-[10px] tracking-[0.2em] uppercase text-stone-400 text-center mb-4">
-            Venue Map.
+            Venue Map
           </p>
           <FloorPlan
             highlightTable={guest.table_number}
@@ -88,19 +114,54 @@ export default function GuestPage() {
           </p>
         </div>
 
-        {/* Tablemates */}
-        {tablemates.length > 0 && (
-          <div className="p-8 border-b border-wedding-border text-center">
-            <p className="text-[10px] tracking-[0.2em] uppercase text-stone-400 mb-4">
-              You're Seated With
-            </p>
-            <div className="space-y-1.5">
-              {tablemates.map((name, i) => (
-                <p key={i} className="text-stone-600 text-sm">{name}</p>
-              ))}
+        {/* Tablemates section — toggleable */}
+        <div className="border-b border-wedding-border">
+          <button
+            onClick={() => setShowTablemates(!showTablemates)}
+            className="w-full p-6 flex items-center justify-between hover:bg-stone-50/50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-stone-50 flex items-center justify-center">
+                <Users className="w-4 h-4 text-stone-500" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-medium text-wedding-black">Your Tablemates</p>
+                <p className="text-xs text-stone-400">
+                  See who's at Table {guest.table_number}
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+            {showTablemates
+              ? <ChevronUp className="w-4 h-4 text-stone-400" />
+              : <ChevronDown className="w-4 h-4 text-stone-400" />
+            }
+          </button>
+
+          {showTablemates && (
+            <div className="px-6 pb-6 animate-fade-in">
+              {loadingTablemates ? (
+                <p className="text-xs text-stone-400 text-center py-4">Loading…</p>
+              ) : tablemates.length === 0 ? (
+                <p className="text-xs text-stone-400 text-center py-4">No tablemates found yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {tablemates.map((mate) => (
+                    <div
+                      key={mate.id}
+                      className="flex items-center justify-between bg-stone-50 rounded-sm px-4 py-3"
+                    >
+                      <p className="text-sm text-stone-700">
+                        {mate.salutation ? `${mate.salutation} ` : ''}
+                        {mate.first_name} {mate.last_name}
+                      </p>
+                      <p className="text-xs text-stone-400">Seat {mate.seat_number}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Action buttons */}
         <div className="p-8 space-y-3">

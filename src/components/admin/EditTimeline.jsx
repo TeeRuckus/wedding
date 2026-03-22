@@ -137,14 +137,14 @@ export default function EditTimeline() {
               label="Start Time"
               value={newItem.start_time}
               onChange={(e) => setNewItem((p) => ({ ...p, start_time: e.target.value }))}
-              placeholder="2:30 PM"
+              placeholder="14:30"
             />
             <Input
               id="newEndTime"
               label="End Time"
               value={newItem.end_time}
               onChange={(e) => setNewItem((p) => ({ ...p, end_time: e.target.value }))}
-              placeholder="3:00 PM"
+              placeholder="15:00"
             />
           </div>
           <PrimaryButton type="submit">

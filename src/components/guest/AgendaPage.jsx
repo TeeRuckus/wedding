@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock } from 'lucide-react';
 import PageWrapper from '../layout/PageWrapper';
@@ -8,6 +8,28 @@ import { useAgenda } from '../../hooks/useAgenda';
 export default function AgendaPage() {
   const navigate = useNavigate();
   const { agenda, loading } = useAgenda();
+  const currentEventRef = useRef(null);
+  const hasScrolled = useRef(false);
+
+  // Find the index of the current event (first non-passed item)
+  const currentEventIndex = agenda.findIndex((a) => !a.passed);
+
+  // Auto-scroll to the current event once agenda loads
+  useEffect(() => {
+    if (hasScrolled.current) return;
+    if (loading || agenda.length === 0) return;
+    if (!currentEventRef.current) return;
+
+    hasScrolled.current = true;
+
+    // Small delay to let animations finish
+    setTimeout(() => {
+      currentEventRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 400);
+  }, [loading, agenda]);
 
   return (
     <PageWrapper>
@@ -39,43 +61,49 @@ export default function AgendaPage() {
           </p>
         ) : (
           <div className="space-y-3">
-            {agenda.map((item, index) => (
-              <div
-                key={item.id || index}
-                className={`flex items-start gap-4 p-4 rounded-sm transition-all border
-                  animate-fade-in ${item.passed
-                    ? 'bg-stone-50/50 text-stone-400 border-stone-100'
-                    : 'bg-white text-stone-800 border-stone-200'
-                  }`}
-                style={{ animationDelay: `${index * 80}ms` }}
-              >
-                {/* Time column */}
-                <div className={`font-medium text-sm min-w-[85px] tracking-wide ${
-                  item.passed ? 'text-stone-300' : 'text-wedding-black'
-                }`}>
-                  {item.start_time}
-                  {item.end_time && (
-                    <span className="text-stone-400 text-xs block">
-                      – {item.end_time}
-                    </span>
+            {agenda.map((item, index) => {
+              const isCurrent = index === currentEventIndex;
+
+              return (
+                <div
+                  key={item.id || index}
+                  ref={isCurrent ? currentEventRef : null}
+                  className={`flex items-start gap-4 p-4 rounded-sm transition-all border
+                    ${item.passed
+                      ? 'bg-stone-50/50 text-stone-400 border-stone-100'
+                      : isCurrent
+                        ? 'bg-white text-stone-800 border-wedding-black ring-1 ring-wedding-black/10'
+                        : 'bg-white text-stone-800 border-stone-200'
+                    }`}
+                >
+                  {/* Time column */}
+                  <div className={`font-medium text-sm min-w-[85px] tracking-wide ${
+                    item.passed ? 'text-stone-300' : 'text-wedding-black'
+                  }`}>
+                    {item.start_time}
+                    {item.end_time && (
+                      <span className="text-stone-400 text-xs block">
+                        – {item.end_time}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Event name */}
+                  <div className="flex-1">
+                    <p className={`font-medium text-sm ${
+                      item.passed ? 'line-through text-stone-400' : ''
+                    }`}>
+                      {item.event_name}
+                    </p>
+                  </div>
+
+                  {/* Active indicator dot */}
+                  {isCurrent && (
+                    <div className="w-2 h-2 rounded-full bg-wedding-black animate-pulse-soft mt-1.5" />
                   )}
                 </div>
-
-                {/* Event name */}
-                <div className="flex-1">
-                  <p className={`font-medium text-sm ${
-                    item.passed ? 'line-through text-stone-400' : ''
-                  }`}>
-                    {item.event_name}
-                  </p>
-                </div>
-
-                {/* Active indicator */}
-                {!item.passed && index === agenda.findIndex(a => !a.passed) && (
-                  <div className="w-2 h-2 rounded-full bg-wedding-black animate-pulse-soft mt-1.5" />
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
