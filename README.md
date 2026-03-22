@@ -262,7 +262,7 @@ VITE_EMAILJS_SERVICE_ID=service_abc123
 VITE_EMAILJS_TEMPLATE_ID=template_abc123
 VITE_EMAILJS_PUBLIC_KEY=your_public_key_here
 
-VITE_ADMIN_EMAIL=tawanakwaramba@gmail.com
+VITE_ADMIN_EMAIL=''
 VITE_PHOTO_SHARE_URL=https://your-photo-sharing-link.com
 
 # Wedding Registry (bank details)
