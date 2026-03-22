@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import PageWrapper from '../layout/PageWrapper';
 import Input from '../ui/Input';
@@ -19,7 +19,6 @@ export default function AdminLogin() {
     e.preventDefault();
     setError('');
 
-    // Validate inputs
     const emailVal = validateEmail(email);
     const passVal = validatePassword(password);
 
@@ -53,14 +52,6 @@ export default function AdminLogin() {
 
   return (
     <PageWrapper centered>
-      <button
-        onClick={() => navigate('/')}
-        className="absolute top-8 left-5 flex items-center gap-2 text-stone-500 hover:text-wedding-black transition-colors z-20"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        <span className="text-xs tracking-[0.15em] uppercase font-medium">Home</span>
-      </button>
-
       <div className="bg-white/90 backdrop-blur-sm rounded-sm shadow-2xl p-10 border border-wedding-border
                       animate-fade-in w-full">
         <div className="text-center mb-8">

@@ -9,12 +9,13 @@ import { useAdmin } from '../../hooks/useAdmin';
 
 export default function AdminMain() {
   const navigate = useNavigate();
-  const { guests, checkedInGuests, uncheckedGuests, fetchGuests, loading } = useAdmin();
+  const { guests, checkedInGuests, uncheckedGuests, failedAttempts, fetchGuests, fetchFailedAttempts, loading } = useAdmin();
   const [user, setUser] = useState(null);
 
   useEffect(() => {
     checkAuth();
     fetchGuests();
+    fetchFailedAttempts();
   }, []);
 
   async function checkAuth() {
@@ -30,6 +31,9 @@ export default function AdminMain() {
     await supabase.auth.signOut();
     navigate('/admin');
   }
+
+  // Count only real failed attempts (not photo records)
+  const realFailedCount = failedAttempts.filter((a) => a.attempt_number > 0).length;
 
   const menuItems = [
     {
@@ -96,15 +100,15 @@ export default function AdminMain() {
         </button>
       </div>
 
-      {/* Stats summary — clickable */}
+      {/* Stats summary — all clickable */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <button
-          onClick={() => navigate('/admin/guests?filter=all')}
-          className="bg-white rounded-sm border border-wedding-border p-4 text-center
-                     hover:border-stone-400 active:scale-[0.97] transition-all"
+          onClick={() => navigate('/admin/failed-attempts')}
+          className="bg-white rounded-sm border border-amber-200 p-4 text-center
+                     hover:border-amber-400 active:scale-[0.97] transition-all"
         >
-          <p className="text-2xl font-serif text-wedding-black">{guests.length}</p>
-          <p className="text-[9px] tracking-[0.15em] uppercase text-stone-400 mt-1">Total</p>
+          <p className="text-2xl font-serif text-amber-600">{realFailedCount}</p>
+          <p className="text-[9px] tracking-[0.15em] uppercase text-stone-400 mt-1">Failed</p>
         </button>
         <button
           onClick={() => navigate('/admin/guests?filter=checked-in')}

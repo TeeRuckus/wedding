@@ -1,19 +1,24 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import BotanicalDecor from './BotanicalDecor';
 
 /**
- * Persistent banner displayed on every page.
- * The T & botanical-J monogram acts as a home button.
+ * Persistent T & J monogram banner.
+ * Route-aware: navigates to admin dashboard on admin pages,
+ * guest landing page on guest pages.
  */
 export default function Banner() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isAdminPage = location.pathname.startsWith('/admin');
+  const homePath = isAdminPage ? '/admin/dashboard' : '/';
 
   return (
     <button
-      onClick={() => navigate('/')}
+      onClick={() => navigate(homePath)}
       className="flex items-center justify-center gap-1 mx-auto mb-6 group focus:outline-none"
-      aria-label="Return to home"
+      aria-label={isAdminPage ? 'Return to admin dashboard' : 'Return to home'}
     >
       <span className="text-3xl font-serif text-wedding-black tracking-wider
                        group-hover:opacity-70 transition-opacity">

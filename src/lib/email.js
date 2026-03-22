@@ -1,4 +1,5 @@
 import emailjs from '@emailjs/browser';
+import { supabase } from './supabase';
 
 const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
 const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
@@ -31,13 +32,15 @@ function getPerthTimestamp() {
 }
 
 /**
- * Uploads a photo using raw fetch and generates a signed URL using raw fetch.
- * The Supabase JS client is completely bypassed for ALL storage operations.
+ * Uploads a photo to Storage via raw fetch, generates a signed URL,
+ * and saves the filename to the failed_attempts table so the admin
+ * portal can find and display it.
  *
  * @param {string} base64 - data:image/jpeg;base64,... string
+ * @param {string[]} attempts - the three failed name attempts
  * @returns {Promise<string|null>} Signed URL (24h) or null
  */
-async function uploadPhoto(base64) {
+async function uploadPhoto(base64, attempts) {
   if (!base64) return null;
 
   try {
@@ -45,7 +48,7 @@ async function uploadPhoto(base64) {
     const filename = `failed-attempt-${timestamp}.jpg`;
     const blob = base64ToBlob(base64);
 
-    // Step 1: Upload via raw fetch
+    // Step 1: Upload to Storage via raw fetch
     const uploadRes = await fetch(
       `${SUPABASE_URL}/storage/v1/object/guest-photos/${filename}`,
       {
@@ -65,7 +68,17 @@ async function uploadPhoto(base64) {
       return null;
     }
 
-    // Step 2: Create signed URL via raw fetch (JS client is broken for this too)
+    // Step 2: Save the filename to failed_attempts so admin can display it.
+    // Links to the attempts via first_name_attempted matching.
+    await supabase.from('failed_attempts').insert({
+      first_name_attempted: (attempts && attempts[0]) || 'Unknown',
+      last_name_attempted: (attempts && attempts[0]) || 'Unknown',
+      attempt_number: 0,
+      photo_filename: filename,
+      attempted_at: new Date().toISOString(),
+    });
+
+    // Step 3: Generate signed URL via raw fetch
     const signRes = await fetch(
       `${SUPABASE_URL}/storage/v1/object/sign/guest-photos/${filename}`,
       {
@@ -75,19 +88,16 @@ async function uploadPhoto(base64) {
           'apikey': SUPABASE_ANON_KEY,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ expiresIn: 60 * 60 * 24 }), // 24 hours
+        body: JSON.stringify({ expiresIn: 60 * 60 * 24 }),
       }
     );
 
     if (!signRes.ok) {
-      const errText = await signRes.text();
-      console.error('Signed URL error:', signRes.status, errText);
-      // Fallback: return the direct public-ish URL (still requires auth header to view)
+      console.error('Signed URL error:', signRes.status);
       return null;
     }
 
     const signData = await signRes.json();
-    // signData.signedURL is the path — prepend the Supabase URL
     const signedUrl = signData.signedURL
       ? `${SUPABASE_URL}/storage/v1${signData.signedURL}`
       : null;
@@ -134,7 +144,7 @@ export async function sendFailedAttemptEmail({ attempts }) {
 
 /**
  * Email 2 — Sent only if the guest takes a photo.
- * Uploads via raw fetch, gets signed URL via raw fetch.
+ * Uploads to Storage, saves filename to DB, embeds signed URL in email.
  */
 export async function sendPhotoFollowUp({ photoBase64, attempts }) {
   if (!SERVICE_ID || !TEMPLATE_ID || !PUBLIC_KEY) {
@@ -142,7 +152,7 @@ export async function sendPhotoFollowUp({ photoBase64, attempts }) {
     return false;
   }
 
-  const photoUrl = await uploadPhoto(photoBase64);
+  const photoUrl = await uploadPhoto(photoBase64, attempts);
 
   if (!photoUrl) {
     console.error('Photo upload failed — sending email without photo.');
