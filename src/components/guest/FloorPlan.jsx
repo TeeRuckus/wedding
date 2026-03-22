@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Maximize2, X } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Maximize2, X, ZoomIn, ZoomOut, LocateFixed } from 'lucide-react';
 
 /*
  * ─── Venue Layout (Landscape) ───
@@ -19,15 +19,11 @@ import { Maximize2, X } from 'lucide-react';
  * RIGHT WALL:  Gift table
  */
 
-/*TODO: Come back to this, and make sure that the tables are going to be the following 
- * - offset from each other
- *   - You try to make a gap in the middle for where we're going to be dancing in
- */
 const TABLE_POSITIONS = {
   5:  { x: 260, y: 110 },
   8:  { x: 450, y: 110 },
   4:  { x: 640, y: 110 },
-  3:  { x: 355, y: 200},
+  3:  { x: 355, y: 200 },
   10: { x: 545, y: 200 },
   12: { x: 735, y: 200 },
   7:  { x: 355, y: 380 },
@@ -42,9 +38,14 @@ const TABLE_RADIUS = 28;
 const SEAT_RADIUS = 5.5;
 const SEATS_PER_TABLE = 10;
 
+const SVG_WIDTH = 900;
+const SVG_HEIGHT = 620;
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 4;
+
 /**
  * Generate seat positions evenly around a circular table.
- * Seat 1 is at the top (12-o'clock), numbered clockwise.
+ * Seat 1 at 12-o'clock, numbered clockwise.
  */
 function getSeatPositions(cx, cy, count = SEATS_PER_TABLE, orbitRadius = TABLE_RADIUS + 13) {
   return Array.from({ length: count }, (_, i) => {
@@ -58,15 +59,11 @@ function getSeatPositions(cx, cy, count = SEATS_PER_TABLE, orbitRadius = TABLE_R
 }
 
 
-/**
- * A single round table with labelled seats.
- */
 function RoundTable({ cx, cy, tableNum, isHighlighted, highlightSeat }) {
   const seats = getSeatPositions(cx, cy);
 
   return (
     <g>
-      {/* Table circle */}
       <circle
         cx={cx} cy={cy} r={TABLE_RADIUS}
         fill={isHighlighted ? '#1a1a1a' : '#f5f0eb'}
@@ -78,7 +75,6 @@ function RoundTable({ cx, cy, tableNum, isHighlighted, highlightSeat }) {
         )}
       </circle>
 
-      {/* Table number */}
       <text
         x={cx} y={cy - 3}
         textAnchor="middle" dominantBaseline="central"
@@ -89,7 +85,6 @@ function RoundTable({ cx, cy, tableNum, isHighlighted, highlightSeat }) {
         {tableNum}
       </text>
 
-      {/* "Chairs: 10" label */}
       <text
         x={cx} y={cy + 11}
         textAnchor="middle" dominantBaseline="central"
@@ -101,7 +96,6 @@ function RoundTable({ cx, cy, tableNum, isHighlighted, highlightSeat }) {
         Chairs: {SEATS_PER_TABLE}
       </text>
 
-      {/* Seats */}
       {seats.map((seat) => {
         const isSeatHL = isHighlighted && highlightSeat === seat.num;
         return (
@@ -116,7 +110,6 @@ function RoundTable({ cx, cy, tableNum, isHighlighted, highlightSeat }) {
                 <animate attributeName="r" values="5.5;7;5.5" dur="1.5s" repeatCount="indefinite" />
               )}
             </circle>
-            {/* Seat number */}
             <text
               x={seat.x} y={seat.y}
               textAnchor="middle" dominantBaseline="central"
@@ -134,10 +127,6 @@ function RoundTable({ cx, cy, tableNum, isHighlighted, highlightSeat }) {
 }
 
 
-/**
- * Bridal table (Table 13) — vertical rectangle, 12 seats along the right side
- * (facing the dance floor). Seat 1 at the top, seat 12 at the bottom.
- */
 function BridalTable({ x, y, isHighlighted, highlightSeat }) {
   const tableWidth = 22;
   const tableHeight = 200;
@@ -146,7 +135,6 @@ function BridalTable({ x, y, isHighlighted, highlightSeat }) {
 
   return (
     <g>
-      {/* Table rectangle (vertical) */}
       <rect
         x={x} y={y}
         width={tableWidth} height={tableHeight}
@@ -160,7 +148,6 @@ function BridalTable({ x, y, isHighlighted, highlightSeat }) {
         )}
       </rect>
 
-      {/* Table label — rotated vertically */}
       <text
         x={x + tableWidth / 2} y={y + tableHeight / 2 - 10}
         textAnchor="middle" dominantBaseline="central"
@@ -183,7 +170,6 @@ function BridalTable({ x, y, isHighlighted, highlightSeat }) {
         BRIDAL TABLE
       </text>
 
-      {/* 12 seats along the right side (facing dance floor), top to bottom */}
       {Array.from({ length: seatCount }, (_, i) => {
         const seatNum = i + 1;
         const sx = x - 11;
@@ -218,13 +204,9 @@ function BridalTable({ x, y, isHighlighted, highlightSeat }) {
 }
 
 
-/**
- * Vendor table (Table 14) — small table with 4 seats.
- */
 function VendorTable({ x, y, isHighlighted, highlightSeat }) {
   const tableWidth = 65;
   const tableHeight = 18;
-  // All 4 seats along the bottom edge (facing venue exterior)
   const seatPositions = [
     { num: 1, sx: x + tableWidth * 0.2, sy: y + tableHeight + 10 },
     { num: 2, sx: x + tableWidth * 0.4, sy: y + tableHeight + 10 },
@@ -234,7 +216,6 @@ function VendorTable({ x, y, isHighlighted, highlightSeat }) {
 
   return (
     <g>
-      {/* Table rectangle */}
       <rect
         x={x} y={y}
         width={tableWidth} height={tableHeight}
@@ -248,7 +229,6 @@ function VendorTable({ x, y, isHighlighted, highlightSeat }) {
         )}
       </rect>
 
-      {/* Label */}
       <text
         x={x + tableWidth / 2} y={y + tableHeight / 2 - 2}
         textAnchor="middle" dominantBaseline="central"
@@ -269,7 +249,6 @@ function VendorTable({ x, y, isHighlighted, highlightSeat }) {
         VENDORS
       </text>
 
-      {/* 4 seats */}
       {seatPositions.map((seat) => {
         const isSeatHL = isHighlighted && highlightSeat === seat.num;
         return (
@@ -301,71 +280,236 @@ function VendorTable({ x, y, isHighlighted, highlightSeat }) {
 }
 
 
+/* ════════════════════════════════════════════════════════
+ * Zoom & Pan hooks
+ * ════════════════════════════════════════════════════════ */
+
 /**
- * Full venue floor plan — landscape orientation matching the real venue.
+ * Returns the SVG-space coordinates for a highlighted table,
+ * so we can auto-zoom to it on mount.
  */
-export default function FloorPlan({ highlightTable = null, highlightSeat = null }) {
-  const [isFullscreen, setIsFullscreen] = useState(false);
+function getTableCenter(tableNum) {
+  if (tableNum === 13) return { x: 40, y: 230 }; // bridal table center
+  if (tableNum === 14) return { x: 92, y: 570 }; // vendor table center
+  const pos = TABLE_POSITIONS[tableNum];
+  if (pos) return { x: pos.x, y: pos.y };
+  return null;
+}
 
-  // Close fullscreen on Escape key
+/**
+ * Custom hook encapsulating all zoom/pan state and gesture handlers.
+ */
+function useZoomPan(containerRef, highlightTable) {
+  const [scale, setScale] = useState(1);
+  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+
+  // Drag state
+  const isDragging = useRef(false);
+  const lastPos = useRef({ x: 0, y: 0 });
+
+  // Pinch state
+  const lastPinchDist = useRef(null);
+
+  const clampTranslate = useCallback((tx, ty, s) => {
+    if (s <= 1) return { x: 0, y: 0 };
+    const el = containerRef.current;
+    if (!el) return { x: tx, y: ty };
+    const rect = el.getBoundingClientRect();
+    const maxX = (rect.width * s) / 2;
+    const maxY = (rect.height * s) / 2;
+    return {
+      x: Math.max(-maxX, Math.min(maxX, tx)),
+      y: Math.max(-maxY, Math.min(maxY, ty)),
+    };
+  }, [containerRef]);
+
+  function zoomTo(newScale, centerX, centerY) {
+    const clamped = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newScale));
+    setScale(clamped);
+    if (clamped <= 1) {
+      setTranslate({ x: 0, y: 0 });
+    } else {
+      setTranslate((prev) => clampTranslate(prev.x, prev.y, clamped));
+    }
+  }
+
+  function zoomIn() { zoomTo(scale * 1.5); }
+  function zoomOut() { zoomTo(scale / 1.5); }
+  function resetZoom() {
+    setScale(1);
+    setTranslate({ x: 0, y: 0 });
+  }
+
+  /** Zoom to a specific table */
+  function focusTable(tableNum) {
+    const center = getTableCenter(tableNum);
+    if (!center) return;
+
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+
+    const focusScale = 2.5;
+    const ratioX = rect.width / SVG_WIDTH;
+    const ratioY = rect.height / SVG_HEIGHT;
+
+    // With transform-origin: center, scaling anchors at the container's midpoint.
+    // To bring SVG point (cx, cy) to the container centre:
+    //   tx = (containerMid - svgPixel) * scale
+    const tx = (rect.width / 2 - center.x * ratioX) * focusScale;
+    const ty = (rect.height / 2 - center.y * ratioY) * focusScale;
+
+    setScale(focusScale);
+    setTranslate(clampTranslate(tx, ty, focusScale));
+  }
+
+  // ── Mouse wheel zoom ──
   useEffect(() => {
-    function handleKey(e) {
-      if (e.key === 'Escape') setIsFullscreen(false);
-    }
-    if (isFullscreen) {
-      document.addEventListener('keydown', handleKey);
-      return () => document.removeEventListener('keydown', handleKey);
-    }
-  }, [isFullscreen]);
+    const el = containerRef.current;
+    if (!el) return;
 
-  const svgContent = (
+    function handleWheel(e) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      zoomTo(scale * delta);
+    }
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [scale]);
+
+  // ── Touch pinch zoom + pan ──
+  function handleTouchStart(e) {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastPinchDist.current = Math.hypot(dx, dy);
+    } else if (e.touches.length === 1 && scale > 1) {
+      isDragging.current = true;
+      lastPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  }
+
+  function handleTouchMove(e) {
+    if (e.touches.length === 2 && lastPinchDist.current !== null) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      const ratio = dist / lastPinchDist.current;
+      lastPinchDist.current = dist;
+      zoomTo(scale * ratio);
+    } else if (e.touches.length === 1 && isDragging.current && scale > 1) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - lastPos.current.x;
+      const dy = e.touches[0].clientY - lastPos.current.y;
+      lastPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      setTranslate((prev) => clampTranslate(prev.x + dx, prev.y + dy, scale));
+    }
+  }
+
+  function handleTouchEnd() {
+    isDragging.current = false;
+    lastPinchDist.current = null;
+  }
+
+  // ── Mouse drag (desktop) ──
+  function handleMouseDown(e) {
+    if (scale <= 1) return;
+    isDragging.current = true;
+    lastPos.current = { x: e.clientX, y: e.clientY };
+  }
+
+  function handleMouseMove(e) {
+    if (!isDragging.current || scale <= 1) return;
+    const dx = e.clientX - lastPos.current.x;
+    const dy = e.clientY - lastPos.current.y;
+    lastPos.current = { x: e.clientX, y: e.clientY };
+    setTranslate((prev) => clampTranslate(prev.x + dx, prev.y + dy, scale));
+  }
+
+  function handleMouseUp() {
+    isDragging.current = false;
+  }
+
+  // Auto-focus on highlighted table on first render
+  useEffect(() => {
+    if (highlightTable != null) {
+      // Small delay so the container has mounted and measured
+      const timer = setTimeout(() => focusTable(highlightTable), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightTable]);
+
+  const transform = `translate(${translate.x}px, ${translate.y}px) scale(${scale})`;
+
+  return {
+    scale,
+    transform,
+    zoomIn,
+    zoomOut,
+    resetZoom,
+    focusTable,
+    handlers: {
+      onTouchStart: handleTouchStart,
+      onTouchMove: handleTouchMove,
+      onTouchEnd: handleTouchEnd,
+      onMouseDown: handleMouseDown,
+      onMouseMove: handleMouseMove,
+      onMouseUp: handleMouseUp,
+      onMouseLeave: handleMouseUp,
+    },
+  };
+}
+
+
+/* ════════════════════════════════════════════════════════
+ * SVG Content (pure structure, no interaction logic)
+ * ════════════════════════════════════════════════════════ */
+
+function VenueSVG({ highlightTable, highlightSeat }) {
+  return (
     <svg
       viewBox="0 0 900 620"
-      className="w-full h-auto"
+      className="w-full h-auto block select-none"
       xmlns="http://www.w3.org/2000/svg"
       role="img"
       aria-label="Venue floor plan"
     >
-      {/* ─── Background ─── */}
+      {/* Background */}
       <rect x="0" y="0" width="900" height="620" fill="#faf8f5" rx="3" />
 
-      {/* ─── Venue Walls ─── */}
+      {/* Venue Walls */}
       <rect x="20" y="20" width="860" height="580" fill="none" stroke="#e0dbd4" strokeWidth="1.5" rx="2" />
 
-      {/* ─── TOP WALL — Exits + Dessert ─── */}
-      {/* Left exit */}
+      {/* ─── TOP WALL ─── */}
       <rect x="35" y="25" width="50" height="16" fill="#e8f5e9" stroke="#66bb6a" strokeWidth="0.8" rx="2" />
       <text x="60" y="36" textAnchor="middle" fill="#388e3c" fontSize="6" fontWeight="600" fontFamily="'DM Sans',sans-serif">EXIT</text>
 
-      {/* Right exit */}
       <rect x="815" y="25" width="50" height="16" fill="#e8f5e9" stroke="#66bb6a" strokeWidth="0.8" rx="2" />
       <text x="840" y="36" textAnchor="middle" fill="#388e3c" fontSize="6" fontWeight="600" fontFamily="'DM Sans',sans-serif">EXIT</text>
 
-      {/* Dessert table */}
       <rect x="370" y="28" width="65" height="18" fill="#fff0f0" stroke="#e0b0b0" strokeWidth="0.8" rx="8" />
       <text x="402" y="40" textAnchor="middle" fill="#c06060" fontSize="6" fontWeight="600" fontFamily="'DM Sans',sans-serif">DESSERT</text>
 
-      {/* Furniture / equipment top-centre-right */}
       <rect x="520" y="30" width="30" height="14" fill="#f0ece8" stroke="#d4cfc8" strokeWidth="0.6" rx="1" />
       <rect x="560" y="30" width="30" height="14" fill="#f0ece8" stroke="#d4cfc8" strokeWidth="0.6" rx="1" />
       <rect x="600" y="30" width="20" height="14" fill="#f0ece8" stroke="#d4cfc8" strokeWidth="0.6" rx="1" />
 
-      {/* ─── RIGHT WALL — Bar + Cocktails & Gift Table ─── */}
+      {/* ─── RIGHT WALL ─── */}
       <rect x="820" y="55" width="50" height="45" fill="#f5f0eb" stroke="#d4cfc8" strokeWidth="0.8" rx="2" />
       <text x="845" y="75" textAnchor="middle" fill="#8a8178" fontSize="5.5" fontFamily="'DM Sans',sans-serif" letterSpacing="0.05em">BAR +</text>
       <text x="845" y="84" textAnchor="middle" fill="#8a8178" fontSize="5.5" fontFamily="'DM Sans',sans-serif" letterSpacing="0.05em">COCKTAILS</text>
 
-      {/* Gift table — vertical on right edge */}
       <rect x="862" y="300" width="14" height="70" fill="#f5f0eb" stroke="#d4cfc8" strokeWidth="0.8" rx="2" />
       <text x="869" y="340" textAnchor="middle" fill="#8a8178" fontSize="5" fontFamily="'DM Sans',sans-serif" transform="rotate(90 869 340)" letterSpacing="0.1em">GIFT TABLE</text>
 
-      {/* ─── LEFT WALL — Camera, Ceremony Grid, DJ ─── */}
-      {/* Camera / audio icon */}
+      {/* ─── LEFT WALL ─── */}
       <circle cx="55" cy="100" r="8" fill="#f5f0eb" stroke="#d4cfc8" strokeWidth="0.8" />
       <circle cx="55" cy="100" r="3" fill="none" stroke="#a09a94" strokeWidth="0.6" />
       <circle cx="55" cy="100" r="1" fill="#a09a94" />
 
-      {/* ─── Table 13: Bridal Table (vertical, left of dance floor) ─── */}
+      {/* Table 13: Bridal Table */}
       <BridalTable
         x={40}
         y={130}
@@ -373,7 +517,7 @@ export default function FloorPlan({ highlightTable = null, highlightSeat = null 
         highlightSeat={highlightTable === 13 ? highlightSeat : null}
       />
 
-      {/* Ceremony / dance floor grid (shifted right to fit bridal table) */}
+      {/* Dance floor grid */}
       <rect x="68" y="130" width="140" height="200" fill="none" stroke="#d4cfc8" strokeWidth="0.8" rx="1" />
       {Array.from({ length: 10 }, (_, row) => (
         <g key={`row-${row}`}>
@@ -393,7 +537,7 @@ export default function FloorPlan({ highlightTable = null, highlightSeat = null 
       <rect x="40" y="430" width="55" height="30" fill="#f5f0eb" stroke="#d4cfc8" strokeWidth="0.8" rx="8" />
       <text x="67" y="449" textAnchor="middle" fill="#8a8178" fontSize="8" fontWeight="600" fontFamily="'DM Sans',sans-serif">DJ</text>
 
-      {/* ─── ROUND GUEST TABLES ─── */}
+      {/* ─── ROUND TABLES ─── */}
       {Object.entries(TABLE_POSITIONS).map(([num, pos]) => (
         <RoundTable
           key={num}
@@ -405,8 +549,7 @@ export default function FloorPlan({ highlightTable = null, highlightSeat = null 
         />
       ))}
 
-      {/* ─── BOTTOM WALL — Vendors, Buffet, Entrance ─── */}
-      {/* Table 14: Vendor table (with seats + highlighting) */}
+      {/* ─── BOTTOM WALL ─── */}
       <VendorTable
         x={60}
         y={560}
@@ -414,24 +557,18 @@ export default function FloorPlan({ highlightTable = null, highlightSeat = null 
         highlightSeat={highlightTable === 14 ? highlightSeat : null}
       />
 
-
-      {/* Bottom exit left */}
       <rect x="190" y="555" width="50" height="16" fill="#e8f5e9" stroke="#66bb6a" strokeWidth="0.8" rx="2" />
       <text x="215" y="566" textAnchor="middle" fill="#388e3c" fontSize="6" fontWeight="600" fontFamily="'DM Sans',sans-serif">EXIT</text>
 
-      {/* Buffet / serving tables — long bars along bottom */}
       <rect x="260" y="558" width="200" height="10" fill="#e8e2db" stroke="#d4cfc8" strokeWidth="0.8" rx="1" />
       <rect x="260" y="575" width="200" height="10" fill="#e8e2db" stroke="#d4cfc8" strokeWidth="0.8" rx="1" />
-
       <rect x="520" y="558" width="200" height="10" fill="#e8e2db" stroke="#d4cfc8" strokeWidth="0.8" rx="1" />
       <rect x="520" y="575" width="200" height="10" fill="#e8e2db" stroke="#d4cfc8" strokeWidth="0.8" rx="1" />
 
-      {/* Bottom exit right */}
       <rect x="740" y="555" width="50" height="16" fill="#e8f5e9" stroke="#66bb6a" strokeWidth="0.8" rx="2" />
       <text x="765" y="566" textAnchor="middle" fill="#388e3c" fontSize="6" fontWeight="600" fontFamily="'DM Sans',sans-serif">EXIT</text>
 
-
-      {/* ─── Legend (only when highlighting) ─── */}
+      {/* ─── Legend ─── */}
       {highlightTable && (
         <g>
           <rect x="30" y="475" width="100" height="30" fill="white" stroke="#e0dbd4" strokeWidth="0.6" rx="2" />
@@ -446,39 +583,166 @@ export default function FloorPlan({ highlightTable = null, highlightSeat = null 
       )}
     </svg>
   );
+}
 
-  /* ─── Fullscreen mode ─── */
+
+/* ════════════════════════════════════════════════════════
+ * Main FloorPlan export — wraps SVG in zoomable container
+ * ════════════════════════════════════════════════════════ */
+
+export default function FloorPlan({ highlightTable = null, highlightSeat = null }) {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef(null);
+  const fullscreenContainerRef = useRef(null);
+
+  const activeRef = isFullscreen ? fullscreenContainerRef : containerRef;
+  const {
+    scale, transform, zoomIn, zoomOut, resetZoom, focusTable, handlers,
+  } = useZoomPan(activeRef, highlightTable);
+
+  useEffect(() => {
+    function handleKey(e) {
+      if (e.key === 'Escape') setIsFullscreen(false);
+    }
+    if (isFullscreen) {
+      document.addEventListener('keydown', handleKey);
+      return () => document.removeEventListener('keydown', handleKey);
+    }
+  }, [isFullscreen]);
+
+  const zoomControls = (
+    <div className="absolute bottom-3 right-3 z-20 flex flex-col gap-1.5">
+      <button
+        onClick={zoomIn}
+        className="p-2 bg-white rounded-sm shadow-md border border-stone-200
+                   hover:bg-stone-50 active:scale-95 transition-all"
+        aria-label="Zoom in"
+      >
+        <ZoomIn className="w-4 h-4 text-stone-600" />
+      </button>
+      <button
+        onClick={zoomOut}
+        className="p-2 bg-white rounded-sm shadow-md border border-stone-200
+                   hover:bg-stone-50 active:scale-95 transition-all"
+        aria-label="Zoom out"
+      >
+        <ZoomOut className="w-4 h-4 text-stone-600" />
+      </button>
+      {highlightTable && (
+        <button
+          onClick={() => focusTable(highlightTable)}
+          className="p-2 bg-wedding-black rounded-sm shadow-md border border-black
+                     hover:bg-black active:scale-95 transition-all"
+          aria-label="Focus on your table"
+        >
+          <LocateFixed className="w-4 h-4 text-white" />
+        </button>
+      )}
+      {scale > 1 && (
+        <button
+          onClick={resetZoom}
+          className="px-2 py-1 bg-white rounded-sm shadow-md border border-stone-200
+                     text-[9px] tracking-wider text-stone-500 font-medium
+                     hover:bg-stone-50 active:scale-95 transition-all"
+        >
+          RESET
+        </button>
+      )}
+    </div>
+  );
+
+  const zoomHint = scale <= 1 && (
+    <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20
+                    bg-black/60 text-white text-[10px] tracking-wider px-3 py-1.5 rounded-full
+                    pointer-events-none animate-fade-in"
+         style={{ animationDelay: '500ms', opacity: 0 }}>
+      Pinch or scroll to zoom
+    </div>
+  );
+
+  /* ─── Fullscreen ─── */
   if (isFullscreen) {
     return (
-      <div className="fixed inset-0 z-50 bg-white flex items-center justify-center p-4"
-           style={{ animation: 'fadeIn 0.3s ease-out' }}>
-        <button
-          onClick={() => setIsFullscreen(false)}
-          className="absolute top-4 right-4 z-10 p-2 bg-white rounded-full shadow-lg
-                     border border-stone-200 hover:bg-stone-50 transition-colors"
-          aria-label="Close fullscreen"
+      <div className="fixed inset-0 z-50 bg-white flex flex-col">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
+          <p className="text-xs tracking-[0.15em] uppercase text-stone-400 font-medium">
+            Venue Map
+            {scale > 1 && (
+              <span className="ml-2 text-stone-300">{Math.round(scale * 100)}%</span>
+            )}
+          </p>
+          <button
+            onClick={() => setIsFullscreen(false)}
+            className="p-2 hover:bg-stone-50 rounded-sm transition-colors"
+            aria-label="Close fullscreen"
+          >
+            <X className="w-5 h-5 text-stone-500" />
+          </button>
+        </div>
+
+        {/* Map container */}
+        <div
+          ref={fullscreenContainerRef}
+          className="flex-1 overflow-hidden relative touch-none"
+          {...handlers}
         >
-          <X className="w-5 h-5 text-stone-600" />
-        </button>
-        <div className="w-full max-w-4xl">
-          {svgContent}
+          <div
+            style={{
+              transform,
+              transformOrigin: 'center center',
+              transition: scale === 1 ? 'transform 0.3s ease-out' : 'none',
+              cursor: scale > 1 ? 'grab' : 'default',
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <div className="w-full max-w-4xl px-4">
+              <VenueSVG highlightTable={highlightTable} highlightSeat={highlightSeat} />
+            </div>
+          </div>
+          {zoomControls}
+          {zoomHint}
         </div>
       </div>
     );
   }
 
-  /* ─── Inline mode ─── */
+  /* ─── Inline ─── */
   return (
     <div className="relative">
-      {svgContent}
+      <div
+        ref={containerRef}
+        className="overflow-hidden rounded-sm touch-none"
+        {...handlers}
+      >
+        <div
+          style={{
+            transform,
+            transformOrigin: 'center center',
+            transition: scale === 1 ? 'transform 0.3s ease-out' : 'none',
+            cursor: scale > 1 ? 'grab' : 'default',
+          }}
+        >
+          <VenueSVG highlightTable={highlightTable} highlightSeat={highlightSeat} />
+        </div>
+      </div>
+
+      {/* Fullscreen button */}
       <button
         onClick={() => setIsFullscreen(true)}
-        className="absolute top-2 right-2 p-1.5 bg-white/80 backdrop-blur rounded-sm shadow-sm
-                   border border-stone-200 hover:bg-white transition-colors"
+        className="absolute top-2 left-2 p-1.5 bg-white/80 backdrop-blur rounded-sm shadow-sm
+                   border border-stone-200 hover:bg-white transition-colors z-20"
         aria-label="View fullscreen"
       >
         <Maximize2 className="w-4 h-4 text-stone-500" />
       </button>
+
+      {zoomControls}
+      {zoomHint}
     </div>
   );
 }
